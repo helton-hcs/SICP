@@ -2,6 +2,19 @@
 ; Definitions
 ; --------------------
 
+; representing cons, car and cdr (already built-in Scheme)
+
+(define (cons a b)
+  (lambda (index)
+    (cond ((= index 1) a)
+          ((= index 2) b))))
+
+(define (car x)
+  (x 1))
+
+(define (cdr x)
+  (x 2))
+
 ; representing rational numbers
 
 (define (make-rat n d)
@@ -89,8 +102,8 @@
 (define ans (+rat a b))
 (print-rat ans)
 
-(define p (make-vector 4 6))
-(define q (make-vector 7 9))
+(define p (make-vector 1 2))
+(define q (make-vector 2 3))
 (print-vector p)
 (print-vector q)
 
