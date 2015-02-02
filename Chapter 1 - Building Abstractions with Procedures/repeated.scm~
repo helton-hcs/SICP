@@ -1,0 +1,8 @@
+#lang racket
+
+(define (repeated func times)
+  (cond ((> times 0)
+         (func)
+         (repeated func (- times 1)))))
+
+(repeated (lambda() (display "hello")) 10)

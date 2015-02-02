@@ -4,29 +4,27 @@
 
 ; representing cons, car and cdr (already built-in Scheme)
 
-(define (cons a b)
+(define (_cons a b)
   (lambda (index)
     (cond ((= index 1) a)
           ((= index 2) b))))
 
-(define (car x)
-  (x 1))
+(define (_car x) (x 1))
 
-(define (cdr x)
-  (x 2))
+(define (_cdr x) (x 2))
 
 ; representing rational numbers
 
 (define (make-rat n d)
   (let ((g (gcd n d)))
-    (cons (/ n g) 
+    (_cons (/ n g) 
           (/ d g))))
 
 (define (numer x)
-  (car x))
+  (_car x))
 
 (define (denom x)
-  (cdr x))
+  (_cdr x))
 
 (define (+rat x y)
   (make-rat 
@@ -47,13 +45,13 @@
 ; representing vector in the plane
 
 (define (make-vector x y)
-  (cons x y))
+  (_cons x y))
 
 (define (xcor p)
-  (car p))
+  (_car p))
 
 (define (ycor p)
-  (cdr p))
+  (_cdr p))
 
 (define (print-vector v)
   (display "{Vector:(")
@@ -63,13 +61,13 @@
 ; representing line segments
 
 (define (make-seg p q)
-  (cons p q))
+  (_cons p q))
 
 (define (seg-start s)
-  (car s))
+  (_car s))
 
 (define (seg-end s)
-  (cdr s))
+  (_cdr s))
 
 (define (print-seg s)
   (display "{Segment:")
@@ -102,8 +100,8 @@
 (define ans (+rat a b))
 (print-rat ans)
 
-(define p (make-vector 1 2))
-(define q (make-vector 2 3))
+(define p (make-vector 2 3))
+(define q (make-vector 5 1))
 (print-vector p)
 (print-vector q)
 
