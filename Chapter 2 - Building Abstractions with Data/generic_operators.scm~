@@ -1,0 +1,341 @@
+#lang scheme
+
+; --------------------
+; Table operations
+; --------------------
+(define global-array '())
+
+(define (make-entry k v) (list k v))
+(define (key entry) (car entry))
+(define (value entry) (cadr entry))
+
+(define (put op type item)
+  (define (put-helper k array)
+    (cond ((null? array) (list(make-entry k item)))
+          ((equal? (key (car array)) k) array)
+          (else (cons (car array) (put-helper k (cdr array))))))
+  (set! global-array (put-helper (list op type) global-array)))
+
+(define (get op type)
+  (define (get-helper k array)
+    (cond ((null? array) #f)
+          ((equal? (key (car array)) k) (value (car array)))
+          (else (get-helper k (cdr array)))))
+  (get-helper (list op type) global-array))
+
+; --------------------
+; Data type operations
+; --------------------
+
+(define (attach-type type contents)
+  (cons type contents))
+
+(define type car)
+(define contents cdr)
+
+; --------------------
+; Generic operators
+; --------------------
+(define (operate op obj)
+  (let ((proc (get (type obj) op))
+        (args (contents obj)))
+    (if (not (null? proc))
+        (proc args)
+        (error "Undefined operator"))))
+
+(define (operate-2 op arg1 arg2)
+  (if
+   (eq? (type arg1) (type arg2))
+   (let ((proc (get (type arg1) op))
+         (arg1_args (contents arg1))
+         (arg2_args (contents arg2)))
+     (if (not (null? proc))
+         (proc arg1_args arg2_args)
+         (error "Operation undefined on type")))
+   (error "Args not same type")))
+
+; --------------------
+; Complex numbers - Rectangular and Polar representations
+; --------------------
+
+; predicates
+
+(define (rectangular? z)
+  (eq? (type z) 'rectangular))
+
+(define (polar? z)
+  (eq? (type z) 'polar))
+
+; operators
+
+(define (+c z1 z2)
+  (make-rectangular
+   (+ (real-part z1) (real-part z2))
+   (+ (imag-part z1) (imag-part z2))))
+
+(define (-c z1 z2)
+  (make-rectangular
+   (- (real-part z1) (real-part z2))
+   (- (imag-part z1) (imag-part z2))))
+
+(define (*c z1 z2)
+  (make-polar
+   (* (magnitude z1) (magnitude z2))
+   (+ (angle z1) (angle z2))))
+
+(define (/c z1 z2)
+  (make-polar
+   (/ (magnitude z1) (magnitude z2))
+   (- (angle z1) (angle z2))))
+
+; constructors
+
+(define (make-rectangular x y)
+  (attach-type 'rectangular (cons x y)))
+
+(define (make-polar r a)
+  (attach-type 'polar (cons r a)))
+
+; selectors
+
+(define real-part-rectangular car)
+
+(define (real-part-polar z)
+  (* (car z) (cos (cdr z))))
+
+(define imag-part-rectangular cdr)
+
+(define (imag-part-polar z)
+  (* (car z) (sin (cdr z))))
+
+(define (magnitude-rectangular z)
+  (define (square x) (* x x))
+  (sqrt (+ (square (car z))
+           (square (cdr z)))))
+
+(define magnitude-polar car)
+
+(define (angle-rectangular z)
+  (atan (cdr z) (car z)))
+
+(define angle-polar cdr)
+
+; selectors (using generic operators)
+
+(define (real-part obj)
+  (operate 'real-part obj))
+
+(define (imag-part obj)
+  (operate 'imag-part obj))
+
+(define (magnitude obj)
+  (operate 'magnitude obj))
+
+(define (angle obj)
+  (operate 'angle obj))
+
+; installing the <complex-rectangular> package
+
+(put 'rectangular 'real-part real-part-rectangular)
+(put 'rectangular 'imag-part imag-part-rectangular)
+(put 'rectangular 'magnitude magnitude-rectangular)
+(put 'rectangular 'angle     angle-rectangular)
+
+; installing the <complex-polar> package
+
+(put 'polar 'real-part real-part-polar)
+(put 'polar 'imag-part imag-part-polar)
+(put 'polar 'magnitude magnitude-polar)
+(put 'polar 'angle     angle-polar)
+
+; --------------------
+; Complex numbers
+; --------------------
+
+; constructor
+
+(define (make-complex z)
+  (attach-type 'complex z))
+
+; operators
+
+(define (+complex z1 z2)
+  (make-complex (+c z1 z2)))
+
+(define (-complex z1 z2)
+  (make-complex (-c z1 z2)))
+
+(define (*complex z1 z2)
+  (make-complex (*c z1 z2)))
+
+(define (/complex z1 z2)
+  (make-complex (/c z1 z2)))
+
+; printer
+
+(define (print-complex z)
+  (define (print-real-part z)
+    (display (real-part z)))
+  (define (print-imag-part z)
+    (display (imag-part z))
+    (display "i"))
+  (display "{Complex:")
+  (cond ((zero? (imag-part z))
+         (print-real-part z))
+        ((zero? (real-part z))
+         (print-imag-part z))
+        (else
+         (print-real-part z)
+         (cond ((negative? (imag-part z))
+                (display " ")
+                (print-imag-part z))
+               (else
+                (display " + ")
+                (print-imag-part z)))))
+  (display " [")
+  (display (type z))
+  (display "-notation]}"))
+
+; installing <complex numbers> package
+
+(put 'complex 'add   +complex)
+(put 'complex 'sub   -complex)
+(put 'complex 'mul   *complex)
+(put 'complex 'div   /complex)
+(put 'complex 'print print-complex)
+
+; --------------------
+; Rational numbers
+; --------------------
+
+; constructor
+
+(define (make-rat n d)
+  (attach-type 
+   'rational 
+   (let ((g (gcd n d)))
+     (cons (/ n g) 
+           (/ d g)))))
+
+; selectors
+
+(define numer car)
+(define denom cdr)
+
+; operators
+
+(define (+rat x y)
+  (make-rat 
+   (+ (* (numer x) (denom y))
+      (* (numer y) (denom x)))
+   (* (denom x) (denom y))))
+
+(define (-rat x y)
+  (make-rat 
+   (- (* (numer x) (denom y))
+      (* (numer y) (denom x)))
+   (* (denom x) (denom y))))
+
+(define (*rat x y)
+  (make-rat 
+   (* (numer x) (numer y))
+   (* (denom x) (denom y))))
+
+(define (/rat x y)
+  (make-rat 
+   (* (numer x) (denom y))
+   (* (numer y) (denom x))))
+
+; printer
+
+(define (print-rat x)
+  (display "{Rational:")
+  (display (numer x)) (display "/") (display (denom x))
+  (display "}"))
+
+; installing <rational numbers> package
+
+(put 'rational 'add   +rat)
+(put 'rational 'sub   -rat)
+(put 'rational 'mul   *rat)
+(put 'rational 'div   /rat)
+(put 'rational 'print print-rat)
+
+; --------------------
+; Ordinary Numbers
+; --------------------
+
+; constructor
+
+(define (make-number n)
+  (attach-type 'number n))
+
+; operators
+
+(define (+number x y)
+  (make-number (+ x y)))
+
+(define (-number x y)
+  (make-number (- x y)))
+
+(define (*number x y)
+  (make-number (* x y)))
+
+(define (/number x y)
+  (make-number (/ x y)))
+
+; printer
+
+(define (print-number x)
+  (display "{Number:") (display x) (display "}"))
+
+; installing <number> package
+
+(put 'number 'add   +number)
+(put 'number 'sub   -number)
+(put 'number 'mul   *number)
+(put 'number 'div   /number)
+(put 'number 'print print-number)
+
+; --------------------
+; Generic Arithmetic System
+; --------------------
+
+(define (add x y)
+  (operate-2 'add x y))
+
+(define (sub x y)
+  (operate-2 'sub x y))
+
+(define (mul x y)
+  (operate-2 'mul x y))
+
+(define (div x y)
+  (operate-2 'div x y))
+
+(define (print obj)
+  (operate 'print obj)
+  (newline))
+
+; --------------------
+; Testing
+; --------------------
+
+(print (make-number 1))
+(print (add (make-number 4) (make-number 6)))
+(print (sub (make-number 4) (make-number 6)))
+(print (mul (make-number 4) (make-number 6)))
+(print (div (make-number 4) (make-number 6)))
+
+(print (make-rat 5 9))
+(print (add (make-rat 1 2) (make-rat 1 4)))
+(print (sub (make-rat 1 2) (make-rat 1 4)))
+(print (mul (make-rat 1 2) (make-rat 1 4)))
+(print (div (make-rat 1 2) (make-rat 1 4)))
+
+(print (make-complex (make-rectangular 0 5)))
+(print (make-complex (make-polar 3 4)))
+(print (add (make-complex (make-rectangular 1 2)) (make-complex (make-polar 2 3))))
+(print (sub (make-complex (make-rectangular 1 2)) (make-complex (make-polar 2 3))))
+(print (mul (make-complex (make-rectangular 1 2)) (make-complex (make-polar 2 3))))
+(print (div (make-complex (make-rectangular 1 2)) (make-complex (make-polar 2 3))))
